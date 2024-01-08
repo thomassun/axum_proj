@@ -1,3 +1,8 @@
+/// this is the struct to represent a point in 2-axis dimision
+/// `let a = Point(1,2);`
+/// `assert_eq!(a.0,1);`
+/// `assert_eq!(a.1,2);`
+///
 pub struct Point(i32, i32);
 
 impl From<(i32, i32)> for Point {

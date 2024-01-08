@@ -14,9 +14,9 @@
 
 use axum::{
     async_trait,
-    extract::{FromRef, FromRequestParts, State},
+    extract::{ws::Message, ConnectInfo, FromRef, FromRequestParts, State, WebSocketUpgrade},
     http::{request::Parts, StatusCode},
-    response::Json,
+    response::{IntoResponse, Json},
     routing::{get, post},
     Router,
 };
@@ -76,15 +76,35 @@ async fn main() {
     let app = Router::new()
         .route("/user/list", get(list_users))
         .route("/user/create", post(create_user))
+        .route("/ws", get(ws_handler))
         .with_state(pool);
 
     // run it with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {addr}");
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .unwrap();
 }
 
+async fn ws_handler(
+    ws: WebSocketUpgrade,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| handle_socket(socket, addr))
+}
+
+async fn handle_socket(mut socket: axum::extract::ws::WebSocket, addr: SocketAddr) {
+    if socket.send(Message::Ping(vec![1, 2, 3])).await.is_ok() {
+        println!("Ping message sent (to {})", addr);
+    } else {
+        println!("unable to send Ping message( to {})", addr);
+    }
+}
 async fn create_user(
     State(pool): State<Pool>,
     Json(new_user): Json<NewUser>,

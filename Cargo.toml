@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-axum = { version = "0.7", features = ["macros"] }
+axum = { version = "0.7", features = ["macros", "tokio", "ws"] }
 bb8 = "0.8"
 diesel = "2"
 diesel-async = { version = "0.4", features = ["postgres", "bb8"] }
