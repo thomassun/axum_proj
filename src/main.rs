@@ -62,7 +62,9 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let db_url = std::env::var("DATABASE_URL").unwrap();
+    let db_url =
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| "pg://localhost:1234/db".to_owned());
+    // let db_url = std::env::var("DATABASE_URL").unwrap();
 
     // set up connection pool
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(db_url);
