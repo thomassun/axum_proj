@@ -24,6 +24,7 @@ use diesel::prelude::*;
 use diesel_async::{
     pooled_connection::AsyncDieselConnectionManager, AsyncPgConnection, RunQueryDsl,
 };
+use example_diesel_async_postgres::Point;
 use std::{net::SocketAddr, time::Duration};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -54,6 +55,7 @@ type Pool = bb8::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>;
 
 #[tokio::main]
 async fn main() {
+    let p = Point::from((2, 2));
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
