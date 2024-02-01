@@ -1,96 +1,97 @@
-/// this is the struct to represent a point in 2-axis dimision
-/// `let a = Point(1,2);`
-/// `assert_eq!(a.0,1);`
-/// `assert_eq!(a.1,2);`
-///
-pub struct Point(i32, i32);
-impl Point {
-    pub fn new(x: i32, y: i32) -> Self {
-        Point(x, y)
-    }
-    pub fn take_it<P: Pat>(&self, p: P) {
-        p.pat("df");
-    }
+use axum::{
+    async_trait,
+    extract::{rejection::JsonRejection, FromRequest, Request},
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    Json,
+};
+use either::Either::{self, Left, Right};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use validator::{Validate, ValidationError, ValidationErrors};
+
+// the input to our `create_user` handler
+#[derive(Deserialize, Validate)]
+pub struct CreateUser {
+    #[validate(length(min = 5, max = 15), custom = "validate_username_is_not_blank")]
+    pub username: String,
+    #[validate(range(min = 0, max = 120))]
+    age: Option<u8>,
 }
 
-pub trait Pat {
-    fn pat(&self, p: &str) -> Self;
+fn validate_username_is_not_blank(username: &str) -> Result<(), ValidationError> {
+    if username.trim().is_empty() {
+        Err(ValidationError::new("it's all space, not allowed"))
+    } else {
+        Ok(())
+    }
+}
+// the output to our `create_user` handler
+#[derive(Serialize)]
+pub struct User {
+    pub id: u64,
+    pub username: String,
 }
 
-impl Pat for &str {
-    fn pat(&self, p: &str) -> Self {
-        self
-    }
-}
-impl Pat for i32 {
-    fn pat(&self, p: &str) -> Self {
-        todo!()
-    }
-}
-impl From<(i32, i32)> for Point {
-    fn from(value: (i32, i32)) -> Self {
-        Point(value.0, value.1)
-    }
-}
-impl From<i32> for Point {
-    fn from(v: i32) -> Self {
-        Point(v, v)
-    }
-}
+pub struct ValidatedJson<T>(pub Json<T>);
 
-trait Supertrait
+#[async_trait]
+impl<T, S> FromRequest<S> for ValidatedJson<T>
 where
-    Self: Sized,
+    T: DeserializeOwned + Validate,
+    S: Send + Sync,
 {
-    fn method<'a>(self) -> &'a str {
-        "supertrait"
+    type Rejection = MyValidationErrors;
+
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
+        let bytes: Result<Json<T>, JsonRejection> = Json::from_request(req, state).await;
+        match bytes {
+            Err(e) => Err(MyValidationErrors(Left(e))),
+            Ok(data) => match data.validate() {
+                Ok(_) => Ok(ValidatedJson(data)),
+                Err(validationerror) => Err(MyValidationErrors(Right(validationerror))),
+            },
+        }
     }
 }
 
-trait Subtrait: Supertrait {
-    // this looks like it might impl or
-    // override Supertrait::method but it
-    // does not
-    fn method<'a>(self) -> &'a str {
-        "subtrait"
+pub struct MyValidationErrors(Either<JsonRejection, ValidationErrors>);
+
+impl IntoResponse for MyValidationErrors {
+    fn into_response(self) -> Response {
+        match self.0 {
+            Left(jsonerror) => jsonerror.into_response(),
+            Right(validatorerros) => {
+                (StatusCode::UNPROCESSABLE_ENTITY, validatorerros.to_string()).into_response()
+            }
+        }
     }
 }
-
-struct SomeType;
-
-// adds Supertrait::method to SomeType
-impl Supertrait for SomeType {}
-
-// adds Subtrait::method to SomeType
-impl Subtrait for SomeType {}
-
-// both methods exist on SomeType simultaneously
-// neither overriding or shadowing the other
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
+    use super::*;
     #[test]
-    fn test_traits() {
-        {
-            assert_eq!(Subtrait::method(SomeType), "subtrait");
-            assert_eq!(Supertrait::method(SomeType), "supertrait");
+    fn test_basic_ee() {
+        let user = User {
+            id: 3333,
+            username: String::from("John"),
         };
+        assert_eq!(
+            serde_json::to_string(&user).unwrap(),
+            r#"{"id":3333,"username":"John"}"#.to_owned()
+        );
     }
     #[test]
-    fn test_name() {
-        let p: Point = (32, 4).into();
-        // p.take_it("df");
-        // p.take_it(333);
-        assert_eq!(p.1, 4);
-        let p: Point = 32.into();
-        assert_eq!(p.1, 32);
-    }
-    #[test]
-    fn test_split() {
-        let text = "apple>>banana>>cherry";
-        let fruits: Vec<&str> = text.split(">>").collect();
-        println!("{:?}", fruits); // Output: ["apple", "banana", "cherry"]
+    fn test_de_validation() {
+        let input_too_short = r#"{"username":"S"}"#;
+        let input_correct = r#"{"username":"Correct Name"}"#;
+        let input_too_long = r#"{"username":"It's a very long name which exceed the expectation"}"#;
+        let create_user: CreateUser = serde_json::from_str(input_too_short).unwrap();
+        assert!(create_user.validate().is_err());
+        let create_user: CreateUser = serde_json::from_str(input_correct).unwrap();
+        assert!(create_user.validate().is_ok());
+        let create_user: CreateUser = serde_json::from_str(input_too_long).unwrap();
+        assert!(create_user.validate().is_err());
     }
 }
