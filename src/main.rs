@@ -3,7 +3,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use example_diesel_async_postgres::{CreateUser, User, ValidatedJson};
+use axum_example::model::{user::{CreateUser, User}, ValidatedJson};
 
 #[tokio::main]
 async fn main() {
@@ -42,4 +42,20 @@ async fn create_user(
     // this will be converted into a JSON response aka **Serialize
     // with a status code of `201 Created`
     (StatusCode::CREATED, Json(user))
+}
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_name() {
+        let v = [Err("error!"), Ok(1), Ok(2), Ok(3), Err("foo")];
+        let res: Result<i32, &str> = v.into_iter().sum();
+        assert_eq!(res, Err("error!"));
+        let v = [Ok(1), Ok(2), Ok(21)];
+        let res: Result<i32, &str> = v.into_iter().product();
+        assert_eq!(res, Ok(42));
+        let mut v = vec![1, 2, 3];
+        let elem = v.iter_mut().next().unwrap();
+        *elem = 12 ;
+        assert_eq!(v, vec![12, 2, 3]);
+    }
 }
