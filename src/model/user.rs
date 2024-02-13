@@ -9,7 +9,6 @@ pub struct CreateUser {
     #[validate(range(min = 0, max = 120))]
     age: Option<u8>,
 }
-
 fn validate_username_is_not_blank(username: &str) -> Result<(), ValidationError> {
     if username.trim().is_empty() {
         Err(ValidationError::new("it's all space, not allowed"))
@@ -25,6 +24,8 @@ pub struct User {
 }
 #[cfg(test)]
 mod tests {
+    use uuid::Uuid;
+
     use super::*;
 
     #[test]
@@ -37,6 +38,8 @@ mod tests {
             serde_json::to_string(&user).unwrap(),
             r#"{"id":3333,"username":"John"}"#.to_owned()
         );
+        let uuid = uuid::Uuid::new_v3(&Uuid::NAMESPACE_URL, b"jj");
+        println!("{uuid}");
     }
     #[test]
     fn test_de_validation() {

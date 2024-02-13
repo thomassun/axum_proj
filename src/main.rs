@@ -1,8 +1,4 @@
-use axum::{
-    extract::Path,
-    routing::get,
-    Router,
-};
+use axum::{extract::Path, routing::get, Router};
 use axum_example::route::user::user_route;
 use tracing::info;
 
@@ -14,7 +10,7 @@ async fn main() {
     // build our application with a route
     let app = Router::new()
         // `GET /` goes to `root`
-        .route("/:p/:p", get(root))
+        .route("/:p0/:p1", get(root))
         .merge(user_route());
 
     // run our app with hyper, listening globally on port 3000
@@ -24,11 +20,12 @@ async fn main() {
 }
 
 // basic handler that responds with a static string
-async fn root(Path(pair): Path<(u32,i32)>) -> &'static str {
+async fn root(Path(pair): Path<(u32, i32)>) -> &'static str {
     println!("{:?}", pair);
     "Hello, World!"
     // pair
 }
+
 #[cfg(test)]
 mod tests {
 
