@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-axum = { version = "0.7", features = ["macros", "tokio", "ws"] }
+axum = { version = "0.7", features = ["macros", "tokio", "ws", "json"] }
 bb8 = "0.8"
 diesel = "2"
 diesel-async = { version = "0.4", features = ["postgres", "bb8"] }
@@ -17,3 +17,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 validator = { version = "0.16", features = ["derive"] }
 either = "1"
 uuid = { version = "1.7", features = ["serde", "v3"] }
+jsonwebtoken = "9.2.0"
+chrono = "0.4.34"
+axum-extra = { version = "0.9", features = ["cookie"] }
+time = "0.3"

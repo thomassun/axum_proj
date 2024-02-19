@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::{de::value::UsizeDeserializer, Deserialize, Serialize};
 use validator::{Validate, ValidationError};
 
 // the input to our `create_user` handler
@@ -15,6 +15,20 @@ fn validate_username_is_not_blank(username: &str) -> Result<(), ValidationError>
     } else {
         Ok(())
     }
+}
+
+
+#[derive(Deserialize)]
+pub struct LoginUserSchema{
+    pub user:String,
+    pub pwd: String,
+}
+#[derive(Serialize,)]
+pub struct JWTToken{
+    pub sub:String,
+    pub exp:usize,
+    pub iat: usize,
+    pub payload:Option<String>
 }
 // the output to our `create_user` handler
 #[derive(Serialize)]

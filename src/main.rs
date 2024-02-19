@@ -1,4 +1,8 @@
-use axum::{extract::Path, routing::get, Router};
+use axum::{
+    extract::{Path, Request},
+    routing::get,
+    Router,
+};
 use axum_example::route::user::user_route;
 use tracing::info;
 
@@ -20,8 +24,9 @@ async fn main() {
 }
 
 // basic handler that responds with a static string
-async fn root(Path(pair): Path<(u32, i32)>) -> &'static str {
+async fn root(Path(pair): Path<(u32, i32)>, r: Request) -> &'static str {
     println!("{:?}", pair);
+    println!("{:?}", r);
     "Hello, World!"
     // pair
 }

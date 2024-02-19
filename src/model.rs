@@ -10,7 +10,6 @@ use either::Either::{self, Left, Right};
 use serde::de::DeserializeOwned;
 use validator::{Validate, ValidationErrors};
 
-
 pub struct ValidatedJson<T>(pub Json<T>);
 
 #[async_trait]
@@ -48,7 +47,3 @@ impl IntoResponse for MyValidationErrors {
         }
     }
 }
-
-
-
-
