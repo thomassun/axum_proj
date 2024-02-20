@@ -1,5 +1,13 @@
-use serde::{de::value::UsizeDeserializer, Deserialize, Serialize};
+use axum::{async_trait, extract::FromRequestParts, http::request::Parts, RequestPartsExt};
+use axum_extra::{
+    headers::{authorization::Bearer, Authorization},
+    TypedHeader,
+};
+use jsonwebtoken::{decode, DecodingKey, Validation};
+use serde::{Deserialize, Serialize};
 use validator::{Validate, ValidationError};
+
+use super::errors::AppError;
 
 // the input to our `create_user` handler
 #[derive(Deserialize, Validate)]
@@ -17,24 +25,49 @@ fn validate_username_is_not_blank(username: &str) -> Result<(), ValidationError>
     }
 }
 
-
 #[derive(Deserialize)]
-pub struct LoginUserSchema{
-    pub user:String,
+pub struct LoginUserSchema {
+    pub user: String,
     pub pwd: String,
 }
-#[derive(Serialize,)]
-pub struct JWTToken{
-    pub sub:String,
-    pub exp:usize,
+#[derive(Serialize, Deserialize)]
+pub struct Claims {
+    pub sub: String,
+    pub exp: usize,
     pub iat: usize,
-    pub payload:Option<String>
+    pub payload: Option<String>,
 }
 // the output to our `create_user` handler
 #[derive(Serialize)]
 pub struct User {
     pub id: u64,
     pub username: String,
+}
+
+#[async_trait]
+impl<S> FromRequestParts<S> for User
+where
+    S: Send + Sync,
+{
+    type Rejection = AppError;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let TypedHeader(Authorization(bearer)) = parts
+            .extract::<TypedHeader<Authorization<Bearer>>>()
+            .await
+            .map_err(|_| AppError::Unauthorized("Cannt find valid credential".into()))?;
+        let token_data = decode::<Claims>(
+            bearer.token(),
+            &DecodingKey::from_secret(b"secret"),
+            &Validation::default(),
+        )
+        .map_err(|_| AppError::Unauthorized("Invalid JWT".into()))?;
+
+        Ok(User {
+            id: 3334_u64,
+            username: token_data.claims.sub,
+        })
+    }
 }
 #[cfg(test)]
 mod tests {

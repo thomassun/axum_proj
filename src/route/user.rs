@@ -1,20 +1,17 @@
-use std::collections::HashMap;
-
+use anyhow::Ok;
 use axum::{
-    extract::{Path, Request},
-    http::{
-        header::{self, CONTENT_TYPE},
-        HeaderMap, HeaderName, HeaderValue, StatusCode,
-    },
-    response::{IntoResponse, Response},
-    routing::post,
+    http::{header, HeaderName, HeaderValue, StatusCode},
+    response::IntoResponse,
+    routing::{get, post},
     Json, Router,
 };
 use axum_extra::extract::cookie::{Cookie, SameSite};
+use axum_macros::debug_handler;
 use jsonwebtoken::{encode, EncodingKey};
 use serde_json::json;
 
 use crate::model::{
+    errors::AppError,
     user::{CreateUser, JWTToken, LoginUserSchema, User},
     ValidatedJson,
 };
@@ -23,6 +20,7 @@ pub fn user_route() -> Router {
     Router::new()
         .route("/users", post(create_user))
         .route("/api/login", post(login_user_handler))
+        .route("/api/me", get(me))
 }
 async fn create_user(
     // this argument tells axum to parse the request body
@@ -40,15 +38,16 @@ async fn create_user(
     (StatusCode::CREATED, Json(user))
 }
 
+#[debug_handler]
 async fn login_user_handler(
     Json(user_credential): Json<LoginUserSchema>,
     // ) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
-) -> Result<impl IntoResponse, impl IntoResponse> {
+) -> Result<impl IntoResponse, AppError> {
     // println!("{r:#?}");
     if user_credential.pwd != "test" {
-        Err((
-            StatusCode::UNAUTHORIZED,
-            Json(json!({"status":"-11" ,"message":"invalid credential"})),
+        // Err(AppError::Unauthorized (json!({"status":"-11","message":"invalid credential"}) }"}) }"}) })))
+        Err(AppError::Unauthorized(
+            json!({"code": "-11","message":"invalid credential"}).into(),
         ))
     } else {
         let now = chrono::Utc::now();
@@ -74,7 +73,7 @@ async fn login_user_handler(
         let body = json!({"status":"OK","jwt_token": token});
         // let mut new_headers = HeaderMap::new();
         // new_headers.insert(header::SET_COOKIE, cookie.to_string().parse().unwrap());
-        Ok((
+        core::result::Result::Ok((
             StatusCode::OK,
             [
                 (
@@ -89,4 +88,9 @@ async fn login_user_handler(
             Json(body),
         ))
     }
+}
+
+#[debug_handler]
+async fn me(user: User) -> Result<Json<User>, AppError> {
+    Ok(Json(user)).map_err(|_| AppError::None)
 }

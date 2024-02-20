@@ -17,7 +17,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 validator = { version = "0.16", features = ["derive"] }
 either = "1"
 uuid = { version = "1.7", features = ["serde", "v3"] }
-jsonwebtoken = "9.2.0"
-chrono = "0.4.34"
-axum-extra = { version = "0.9", features = ["cookie"] }
+jsonwebtoken = "9.2"
+chrono = "0.4"
+axum-extra = { version = "0.9", features = ["typed-header", "cookie"] }
 time = "0.3"
+anyhow = { version = "1", default-features = false }
+axum-macros = "0.4"
