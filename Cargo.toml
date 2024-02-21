@@ -25,3 +25,4 @@ anyhow = { version = "1", default-features = false }
 axum-macros = "0.4"
 mongodb = {version = "2.8"}
 oauth2 = { version="4.4" }
+tower-http = {version="*", features=["cors"]}

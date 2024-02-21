@@ -2,12 +2,14 @@ use std::sync::Arc;
 
 use axum::{
     extract::{Path, Request},
+    http::{HeaderValue, Method},
     routing::get,
     Router,
 };
 use axum_example::{model::state::AppState, route::user::user_route};
 use mongodb::{options::ClientOptions, Client};
 use tokio::signal;
+use tower_http::cors::CorsLayer;
 use tracing::info;
 
 #[tokio::main]
@@ -29,7 +31,12 @@ async fn main() {
         // `GET /` goes to `root`
         .route("/:p0/:p1", get(root))
         .merge(user_route())
-        .with_state(app_stat);
+        .with_state(app_stat)
+        .layer(
+            CorsLayer::new()
+                .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
+                .allow_methods([Method::GET]),
+        );
 
     // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
@@ -55,7 +62,7 @@ async fn shutdown_signal(mongodb: Client) {
         signal::unix::signal(signal::unix::SignalKind::terminate())
             .expect("Unable to install TERM handler")
             .recv()
-        .await;
+            .await;
     };
     #[cfg(not(unix))]
     let terminal = std::future::pending::<()>();
