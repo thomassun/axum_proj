@@ -55,17 +55,18 @@ async fn shutdown_signal(mongodb: Client) {
         signal::unix::signal(signal::unix::SignalKind::terminate())
             .expect("Unable to install TERM handler")
             .recv()
-            .await;
+        .await;
     };
     #[cfg(not(unix))]
     let terminal = std::future::pending::<()>();
     tokio::select! {
         _ = ctl_c => {println!("CTRL_C")},
-        _ = terminal => {println!("SIGTERM")},
+            _ = terminal => {println!("SIGTERM")},
     };
     println!("Drop MongoDB connection....");
     mongodb.shutdown().await
 }
+
 #[cfg(test)]
 mod tests {
 

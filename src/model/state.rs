@@ -1,7 +1,3 @@
-use std::sync::Arc;
-
-use axum::extract::FromRef;
-
 // #[derive(Clone)]
 pub struct AppState {
     pub db: mongodb::Client,
