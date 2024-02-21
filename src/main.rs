@@ -1,9 +1,13 @@
+use std::sync::Arc;
+
 use axum::{
     extract::{Path, Request},
     routing::get,
     Router,
 };
-use axum_example::route::user::user_route;
+use axum_example::{model::state::AppState, route::user::user_route};
+use mongodb::{options::ClientOptions, Client};
+use tokio::signal;
 use tracing::info;
 
 #[tokio::main]
@@ -12,15 +16,29 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     // build our application with a route
+
+    let mongodb_options = ClientOptions::parse("mongodb://localhost:27017")
+        .await
+        .unwrap();
+
+    let mongodb = mongodb::Client::with_options(mongodb_options).unwrap();
+    let app_stat = Arc::new(AppState {
+        db: mongodb.clone(),
+    });
     let app = Router::new()
         // `GET /` goes to `root`
         .route("/:p0/:p1", get(root))
-        .merge(user_route());
+        .merge(user_route())
+        .with_state(app_stat);
 
     // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     info!("Listening on 0.0.0.0:3000....");
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal(mongodb))
+        .await
+        .unwrap();
+    println!("Shutdown the SERVICE at 0.0.0.0:3000....");
 }
 
 // basic handler that responds with a static string
@@ -30,7 +48,24 @@ async fn root(Path(pair): Path<(u32, i32)>, r: Request) -> &'static str {
     "Hello, World!"
     // pair
 }
-
+async fn shutdown_signal(mongodb: Client) {
+    let ctl_c = signal::ctrl_c();
+    #[cfg(unix)]
+    let terminal = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("Unable to install TERM handler")
+            .recv()
+            .await;
+    };
+    #[cfg(not(unix))]
+    let terminal = std::future::pending::<()>();
+    tokio::select! {
+        _ = ctl_c => {println!("CTRL_C")},
+        _ = terminal => {println!("SIGTERM")},
+    };
+    println!("Drop MongoDB connection....");
+    mongodb.shutdown().await
+}
 #[cfg(test)]
 mod tests {
 

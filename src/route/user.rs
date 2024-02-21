@@ -1,5 +1,8 @@
+use std::sync::Arc;
+
 use anyhow::Ok;
 use axum::{
+    extract::State,
     http::{header, HeaderName, HeaderValue, StatusCode},
     response::IntoResponse,
     routing::{get, post},
@@ -8,15 +11,17 @@ use axum::{
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_macros::debug_handler;
 use jsonwebtoken::{encode, EncodingKey};
+use mongodb::Client;
 use serde_json::json;
 
 use crate::model::{
     errors::AppError,
-    user::{CreateUser, JWTToken, LoginUserSchema, User},
+    state::AppState,
+    user::{Claims, CreateUser, LoginUserSchema, User},
     ValidatedJson,
 };
 
-pub fn user_route() -> Router {
+pub fn user_route() -> Router<Arc<AppState>> {
     Router::new()
         .route("/users", post(create_user))
         .route("/api/login", post(login_user_handler))
@@ -52,7 +57,7 @@ async fn login_user_handler(
     } else {
         let now = chrono::Utc::now();
         let exp = (now + chrono::Duration::minutes(60)).timestamp() as usize;
-        let claims = JWTToken {
+        let claims = Claims {
             sub: user_credential.user,
             exp,
             iat: now.timestamp() as usize,
@@ -91,6 +96,12 @@ async fn login_user_handler(
 }
 
 #[debug_handler]
-async fn me(user: User) -> Result<Json<User>, AppError> {
+async fn me(user: User, mongodb: State<Arc<AppState>>) -> Result<Json<User>, AppError> {
+    mongodb.db
+        .list_databases(None, None)
+        .await
+        .unwrap()
+        .iter()
+        .for_each(|db| println!("{db:?}"));
     Ok(Json(user)).map_err(|_| AppError::None)
 }

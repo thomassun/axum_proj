@@ -1,5 +1,6 @@
 pub mod user;
 pub mod errors;
+pub mod state;
 use axum::{
     async_trait,
     extract::{rejection::JsonRejection, FromRequest, Request},
