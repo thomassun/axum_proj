@@ -6,7 +6,7 @@ use axum::{
     routing::get,
     Router,
 };
-use axum_example::{model::state::AppState, route::user::user_route};
+use axum_example::{model::state::AppState, service::user::user_route};
 use mongodb::{options::ClientOptions, Client};
 use tokio::signal;
 use tower_http::cors::CorsLayer;
@@ -25,7 +25,7 @@ async fn main() {
 
     let mongodb = mongodb::Client::with_options(mongodb_options).unwrap();
     let app_stat = Arc::new(AppState {
-        db: mongodb.clone(),
+        db_client: mongodb.clone(),
     });
     let app = Router::new()
         // `GET /` goes to `root`
@@ -41,10 +41,13 @@ async fn main() {
     // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     info!("Listening on 0.0.0.0:3000....");
-    axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal(mongodb))
-        .await
-        .unwrap();
+    let main_svc = async {
+        axum::serve(listener, app)
+            .with_graceful_shutdown(shutdown_signal(mongodb))
+            .await
+            .unwrap()
+    };
+    tokio::join!(main_svc);
     println!("Shutdown the SERVICE at 0.0.0.0:3000....");
 }
 

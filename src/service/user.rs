@@ -11,7 +11,7 @@ use axum::{
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_macros::debug_handler;
 use jsonwebtoken::{encode, EncodingKey};
-use mongodb::Client;
+use mongodb::bson::{doc, Document};
 use serde_json::json;
 
 use crate::model::{
@@ -97,11 +97,20 @@ async fn login_user_handler(
 
 #[debug_handler]
 async fn me(user: User, mongodb: State<Arc<AppState>>) -> Result<Json<User>, AppError> {
-    mongodb.db
-        .list_databases(None, None)
-        .await
-        .unwrap()
-        .iter()
-        .for_each(|db| println!("{db:?}"));
+    // mongodb
+    //     .db_client
+    //     .list_databases(None, None)
+    //     .await
+    //     .unwrap()
+    //     .iter()
+    //     .for_each(|db| println!("{db:?}"));
+    let db = mongodb.db_client.database("mindpilot");
+    let doc = db.collection::<Document>("doc");
+    println!(
+        "{:?}",
+        doc.find_one(doc! {"meta.name":"SGArrivalCard_081020221004.pdf"}, None)
+            .await
+            .unwrap()
+    );
     Ok(Json(user)).map_err(|_| AppError::None)
 }
